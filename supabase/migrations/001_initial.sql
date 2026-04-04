@@ -1,5 +1,5 @@
 -- ============================================================
--- InterviewReady — Initial Schema
+-- Am I Interview Ready — Initial Schema
 -- Run this in: Supabase Dashboard → SQL Editor → New Query
 -- ============================================================
 

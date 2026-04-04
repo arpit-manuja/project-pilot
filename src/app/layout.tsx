@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "InterviewReady - Ace Your Tech Interview",
+  title: "Am I Interview Ready - Ace Your Tech Interview",
   description: "Prepare for software developer interviews with coding problems, system design guides, and behavioral questions. 100% Free.",
 };
 
