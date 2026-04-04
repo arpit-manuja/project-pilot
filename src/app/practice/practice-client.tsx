@@ -90,7 +90,7 @@ export default function PracticePage({ allQuestions }: { allQuestions: Question[
               <CodeIcon className="w-4 h-4 text-white" />
             </div>
             <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              InterviewReady
+              Am I Interview Ready
             </span>
           </Link>
           <div className="flex items-center gap-3">
