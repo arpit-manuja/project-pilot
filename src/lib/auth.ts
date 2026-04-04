@@ -2,6 +2,7 @@ import type { NextAuthOptions, Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
+import { createClient } from "@supabase/supabase-js";
 
 // Extend the built-in session/token types
 declare module "next-auth" {
@@ -36,6 +37,41 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   callbacks: {
+    async signIn({ user, account }) {
+      try {
+        // Initialize Supabase server client with service role key
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+          process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+        );
+
+        // Upsert user data into public.users
+        const { error } = await supabase
+          .from("users")
+          .upsert(
+            {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              image: user.image,
+              provider: account?.provider || "unknown",
+              environment: process.env.NODE_ENV === "production" ? "production" : "local",
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
+
+        if (error) {
+          console.error("Failed to upsert user to Supabase:", error);
+          // Sign-in continues even if sync fails
+        }
+      } catch (error) {
+        console.error("Error syncing user to Supabase:", error);
+        // Sign-in continues even if sync fails
+      }
+
+      return true;
+    },
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
