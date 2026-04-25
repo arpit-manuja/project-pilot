@@ -17,7 +17,7 @@ const CODE_CHARS = ["<", ">", "/", "=", "{", "}", "[", "]", "(", ")", "0", "1", 
 export function SubtleCodeRain() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const charsRef = useRef<CodeChar[]>([]);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -87,7 +87,7 @@ export function SubtleCodeRain() {
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      if (animationRef.current) {
+      if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
       }
     };

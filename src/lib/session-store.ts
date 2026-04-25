@@ -53,15 +53,27 @@ export function getActiveSession(user = "guest"): Session | null {
 }
 
 // Create a new session
-export function createSession(name: string, topics: string[], targetDate?: string, user = "guest"): Session {
+export function createSession(
+  name: string,
+  topics: TopicId[],
+  targetDate?: string | Date,
+  user = "guest"
+): Session {
   const sessions = getSessions(user);
+  const progress = Object.fromEntries(
+    topics.map((topic) => [topic, { solved: 0, total: 0 }])
+  ) as Session["progress"];
 
   const newSession: Session = {
     id: generateId(),
     name,
     topics,
     createdAt: new Date().toISOString(),
-    targetDate: targetDate || undefined,
+    targetDate:
+      typeof targetDate === "string"
+        ? targetDate || undefined
+        : targetDate?.toISOString(),
+    progress,
   };
 
   sessions.push(newSession);

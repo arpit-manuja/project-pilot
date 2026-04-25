@@ -15,7 +15,7 @@ export function AuroraWaves() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const waveRef = useRef<Wave[]>([]);
   const timeRef = useRef(0);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -81,7 +81,7 @@ export function AuroraWaves() {
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      if (animationRef.current) {
+      if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
       }
     };
