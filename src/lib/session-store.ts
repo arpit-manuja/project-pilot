@@ -2,8 +2,12 @@
 
 import { Session, TopicId } from "./types";
 
-const SESSIONS_KEY = "interview-prep-sessions";
-const ACTIVE_SESSION_KEY = "interview-prep-active-session";
+const SESSIONS_BASE = "interview-prep-sessions";
+const ACTIVE_SESSION_BASE = "interview-prep-active-session";
+
+// Key generators
+const getSessionsKey = (user: string) => `${SESSIONS_BASE}-${user}`;
+const getActiveKey = (user: string) => `${ACTIVE_SESSION_BASE}-${user}`;
 
 // Generate a unique ID
 function generateId(): string {
@@ -11,9 +15,9 @@ function generateId(): string {
 }
 
 // Get all sessions from localStorage
-export function getSessions(): Session[] {
+export function getSessions(user = "guest"): Session[] {
   if (typeof window === "undefined") return [];
-  const data = localStorage.getItem(SESSIONS_KEY);
+  const data = localStorage.getItem(getSessionsKey(user));
   if (!data) return [];
   try {
     return JSON.parse(data);
@@ -23,89 +27,87 @@ export function getSessions(): Session[] {
 }
 
 // Save sessions to localStorage
-function saveSessions(sessions: Session[]): void {
+function saveSessions(sessions: Session[], user = "guest"): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+  localStorage.setItem(getSessionsKey(user), JSON.stringify(sessions));
 }
 
 // Get active session ID
-export function getActiveSessionId(): string | null {
+export function getActiveSessionId(user = "guest"): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(ACTIVE_SESSION_KEY);
+  return localStorage.getItem(getActiveKey(user));
 }
 
 // Set active session
-export function setActiveSession(sessionId: string): void {
+export function setActiveSession(sessionId: string, user = "guest"): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(ACTIVE_SESSION_KEY, sessionId);
+  localStorage.setItem(getActiveKey(user), sessionId);
 }
 
 // Get active session
-export function getActiveSession(): Session | null {
-  const sessions = getSessions();
-  const activeId = getActiveSessionId();
+export function getActiveSession(user = "guest"): Session | null {
+  const sessions = getSessions(user);
+  const activeId = getActiveSessionId(user);
   if (!activeId) return null;
   return sessions.find((s) => s.id === activeId) || null;
 }
 
 // Create a new session
-export function createSession(name: string, topics: TopicId[], targetDate?: Date): Session {
-  const sessions = getSessions();
-  
+export function createSession(name: string, topics: string[], targetDate?: string, user = "guest"): Session {
+  const sessions = getSessions(user);
+
   const newSession: Session = {
     id: generateId(),
     name,
     topics,
-    createdAt: new Date(),
-    targetDate,
-    progress: {},
+    createdAt: new Date().toISOString(),
+    targetDate: targetDate || undefined,
   };
 
-  // Initialize progress for each topic
-  topics.forEach((topic) => {
-    newSession.progress[topic] = {
-      solved: 0,
-      total: 0,
-    };
-  });
-
   sessions.push(newSession);
-  saveSessions(sessions);
-  setActiveSession(newSession.id);
+  saveSessions(sessions, user);
+  setActiveSession(newSession.id, user);
 
   return newSession;
 }
 
-// Update session progress
-export function updateSessionProgress(
-  sessionId: string,
-  topicId: TopicId,
-  solved: number,
-  total: number
-): void {
-  const sessions = getSessions();
-  const sessionIndex = sessions.findIndex((s) => s.id === sessionId);
-  
-  if (sessionIndex !== -1) {
-    sessions[sessionIndex].progress[topicId] = { solved, total };
-    saveSessions(sessions);
+// Delete a session
+export function deleteSession(sessionId: string, user = "guest"): void {
+  let sessions = getSessions(user);
+  sessions = sessions.filter((s) => s.id !== sessionId);
+  saveSessions(sessions, user);
+
+  // If deleted session was active, clear active
+  if (getActiveSessionId(user) === sessionId) {
+    localStorage.removeItem(getActiveKey(user));
   }
 }
 
-// Delete a session
-export function deleteSession(sessionId: string): void {
-  let sessions = getSessions();
-  sessions = sessions.filter((s) => s.id !== sessionId);
-  saveSessions(sessions);
-  
-  // If deleted session was active, clear active
-  if (getActiveSessionId() === sessionId) {
-    localStorage.removeItem(ACTIVE_SESSION_KEY);
+// Mark session as completed
+export function markSessionCompleted(
+  sessionId: string,
+  feedback?: { rating: number; review: string },
+  user = "guest"
+): void {
+  const sessions = getSessions(user);
+  const sessionIndex = sessions.findIndex((s) => s.id === sessionId);
+
+  if (sessionIndex !== -1) {
+    sessions[sessionIndex].isCompleted = true;
+    if (feedback) {
+      sessions[sessionIndex].feedback = feedback;
+    }
+    saveSessions(sessions, user);
+
+    // If completed session was active, clear active
+    if (getActiveSessionId(user) === sessionId) {
+      localStorage.removeItem(getActiveKey(user));
+    }
   }
 }
 
 // Get session by ID
-export function getSessionById(sessionId: string): Session | null {
-  const sessions = getSessions();
+export function getSessionById(sessionId: string, user = "guest"): Session | null {
+  const sessions = getSessions(user);
   return sessions.find((s) => s.id === sessionId) || null;
 }

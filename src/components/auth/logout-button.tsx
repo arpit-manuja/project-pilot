@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 export function LogoutButton() {
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="sm"
       onClick={() => signOut({ callbackUrl: "/" })}
-      className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+      className="border-[var(--card-border)] bg-[var(--bg3)] text-[var(--off)] hover:bg-[#2A2520] hover:text-[var(--white)]"
     >
       Sign Out
     </Button>

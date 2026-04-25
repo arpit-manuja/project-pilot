@@ -8,19 +8,520 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  min-height: 100vh;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-dm-sans), Arial, Helvetica, sans-serif;
+}
+
+.font-editorial {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
+.ir-login-page {
+  --bg: #141210;
+  --bg2: #1c1916;
+  --bg3: #231f1b;
+  --card: #1e1a16;
+  --card-border: #2e2820;
+  --brand: #e8a140;
+  --brand-dim: #c4832a;
+  --brand-glow: rgba(232, 161, 64, 0.12);
+  --success: #3dbf82;
+  --success-glow: rgba(61, 191, 130, 0.1);
+  --white: #f5f0e8;
+  --off: #b8b0a4;
+  --muted: #6b635a;
+  --border: #2a2520;
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--white);
+}
+
+.ir-login-bg,
+.ir-login-grid,
+.ir-login-grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+}
+
+.ir-login-bg {
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ir-login-bg::before {
+  content: "";
+  position: absolute;
+  top: -200px;
+  left: -150px;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(232, 161, 64, 0.13) 0%, transparent 65%);
+}
+
+.ir-login-bg::after {
+  content: "";
+  position: absolute;
+  right: -120px;
+  bottom: -180px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(61, 191, 130, 0.1) 0%, transparent 65%);
+}
+
+.ir-login-grid {
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent);
+}
+
+.ir-login-grain {
+  z-index: 1;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+.ir-login-shell {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.ir-login-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding: 24px 52px;
+}
+
+.ir-login-logo {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.ir-login-logo-icon {
+  display: grid;
+  height: 36px;
+  width: 36px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--brand);
+  box-shadow: 0 0 20px rgba(232, 161, 64, 0.35), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.ir-login-logo-text {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--white);
+}
+
+.ir-login-nav-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(61, 191, 130, 0.25);
+  border-radius: 999px;
+  background: rgba(61, 191, 130, 0.1);
+  padding: 6px 14px 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--success);
+}
+
+.ir-login-pulse {
+  height: 7px;
+  width: 7px;
+  border-radius: 999px;
+  background: var(--success);
+  animation: ir-login-glow 2s ease-in-out infinite;
+}
+
+@keyframes ir-login-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(61, 191, 130, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(61, 191, 130, 0);
+  }
+}
+
+.ir-login-center {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 24px 72px;
+}
+
+.ir-login-layout {
+  display: grid;
+  width: 100%;
+  max-width: 920px;
+  grid-template-columns: 1fr 420px;
+  align-items: center;
+  gap: 80px;
+}
+
+.ir-login-copy-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 28px;
+  border: 1px solid rgba(232, 161, 64, 0.25);
+  border-radius: 999px;
+  background: rgba(232, 161, 64, 0.1);
+  padding: 5px 14px 5px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.ir-login-copy-tag-square {
+  height: 6px;
+  width: 6px;
+  border-radius: 1px;
+  background: var(--brand);
+  transform: rotate(45deg);
+}
+
+.ir-login-copy-title {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 54px;
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--white);
+}
+
+.ir-login-copy-title em {
+  font-style: italic;
+  color: var(--brand);
+}
+
+.ir-login-copy-body {
+  margin-top: 22px;
+  max-width: 320px;
+  font-size: 15px;
+  line-height: 1.8;
+  font-weight: 300;
+  color: var(--off);
+}
+
+.ir-login-rule {
+  margin: 30px 0;
+  height: 1px;
+  width: 48px;
+  background: linear-gradient(90deg, var(--brand-dim), transparent);
+}
+
+.ir-login-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ir-login-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg3);
+  padding: 6px 14px 6px 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--off);
+}
+
+.ir-login-pill-icon {
+  display: grid;
+  height: 16px;
+  width: 16px;
+  place-items: center;
+  border: 1px solid rgba(61, 191, 130, 0.3);
+  border-radius: 999px;
+  background: rgba(61, 191, 130, 0.15);
+  flex-shrink: 0;
+}
+
+.ir-login-proof {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.ir-login-avatars {
+  display: flex;
+}
+
+.ir-login-avatar {
+  display: grid;
+  height: 30px;
+  width: 30px;
+  place-items: center;
+  margin-right: -9px;
+  border: 2px solid var(--bg);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--bg);
+}
+
+.ir-login-avatar-1 {
+  background: #c47d2a;
+}
+
+.ir-login-avatar-2 {
+  background: #2a8a5c;
+}
+
+.ir-login-avatar-3 {
+  background: #5a6e9a;
+}
+
+.ir-login-avatar-4 {
+  background: #8a4a6e;
+}
+
+.ir-login-proof-text {
+  margin-left: 17px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.ir-login-proof-text strong {
+  color: var(--off);
+  font-weight: 500;
+}
+
+.ir-login-card {
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 0 80px rgba(232, 161, 64, 0.06),
+    0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+.ir-login-card-bar {
+  height: 2px;
+  background: linear-gradient(90deg, var(--brand) 0%, var(--brand-dim) 50%, transparent 100%);
+}
+
+.ir-login-card-inner {
+  padding: 38px 36px 40px;
+}
+
+.ir-login-card-label {
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ir-login-card-title {
+  margin-bottom: 6px;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--white);
+}
+
+.ir-login-card-title em {
+  font-style: italic;
+  color: var(--brand);
+}
+
+.ir-login-card-sub {
+  margin-bottom: 30px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.ir-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.ir-login-divider-line {
+  height: 1px;
+  flex: 1;
+  background: var(--border);
+}
+
+.ir-login-divider-text {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ir-login-note {
+  margin-top: 26px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+.ir-login-note a {
+  color: var(--off);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ir-login-footer {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding: 18px 52px;
+}
+
+.ir-login-footer-copy,
+.ir-login-footer-link {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ir-login-footer-links {
+  display: flex;
+  gap: 20px;
+}
+
+.ir-login-footer-link:hover {
+  color: var(--off);
+}
+
+.ir-dark-shell {
+  --bg: #141210;
+  --bg2: #1c1916;
+  --bg3: #231f1b;
+  --card: #1e1a16;
+  --card-border: #2e2820;
+  --brand: #e8a140;
+  --brand-dim: #c4832a;
+  --success: #3dbf82;
+  --white: #f5f0e8;
+  --off: #b8b0a4;
+  --muted: #6b635a;
+  --border: #2a2520;
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--white);
+}
+
+.ir-dark-card {
+  border: 1px solid var(--card-border);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+.ir-dark-title {
+  font-family: var(--font-fraunces), Georgia, serif;
+  color: var(--white);
+}
+
+.ir-dark-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(232, 161, 64, 0.25);
+  border-radius: 999px;
+  background: rgba(232, 161, 64, 0.1);
+  padding: 6px 14px 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.ir-dark-progress {
+  background: linear-gradient(90deg, var(--brand), var(--brand-dim));
+}
+
+@media (max-width: 740px) {
+  .ir-login-nav {
+    padding: 18px 24px;
+  }
+
+  .ir-login-layout {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .ir-login-copy {
+    text-align: center;
+  }
+
+  .ir-login-copy-title {
+    font-size: 38px;
+  }
+
+  .ir-login-copy-body {
+    max-width: 100%;
+  }
+
+  .ir-login-rule {
+    margin: 26px auto;
+  }
+
+  .ir-login-pills,
+  .ir-login-proof {
+    justify-content: center;
+  }
+
+  .ir-login-footer {
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 24px;
+  }
 }

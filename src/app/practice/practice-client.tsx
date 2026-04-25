@@ -1,39 +1,47 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CodeIcon } from "@/components/icons";
+import { LogoutButton } from "@/components/auth/logout-button";
+import confetti from "canvas-confetti";
+import { motion, AnimatePresence } from "framer-motion";
 import { Question, Difficulty } from "@/lib/questions";
 import { AVAILABLE_TOPICS, TopicId } from "@/lib/types";
 import { getActiveSession } from "@/lib/session-store";
-import { CodeIcon } from "@/components/icons";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 const DONE_KEY = "interview-prep-done";
 
-function getDoneIds(): Set<string> {
+function getDoneIds(user: string): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    return new Set(JSON.parse(localStorage.getItem(DONE_KEY) || "[]"));
+    return new Set(JSON.parse(localStorage.getItem(`${DONE_KEY}-${user}`) || "[]"));
   } catch {
     return new Set();
   }
 }
 
-function toggleDone(id: string): Set<string> {
-  const done = getDoneIds();
-  if (done.has(id)) { done.delete(id); } else { done.add(id); }
-  localStorage.setItem(DONE_KEY, JSON.stringify([...done]));
+function toggleDone(id: string, user: string): Set<string> {
+  const done = getDoneIds(user);
+  if (done.has(id)) {
+    done.delete(id);
+  } else {
+    done.add(id);
+  }
+  localStorage.setItem(`${DONE_KEY}-${user}`, JSON.stringify([...done]));
   return new Set(done);
 }
 
-const difficultyColors: Record<Difficulty, string> = {
-  easy: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  hard: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+const difficultyTone: Record<Difficulty, string> = {
+  easy: "border-[rgba(61,191,130,0.25)] bg-[rgba(61,191,130,0.12)] text-[#7ED9A6]",
+  medium: "border-[rgba(232,161,64,0.25)] bg-[rgba(232,161,64,0.12)] text-[#E8A140]",
+  hard: "border-[rgba(210,90,90,0.25)] bg-[rgba(210,90,90,0.12)] text-[#F0A7A7]",
 };
 
-export default function PracticePage({ allQuestions }: { allQuestions: Question[] }) {
+const baseFilterClass =
+  "rounded-full border px-3 py-2 text-xs font-medium tracking-[0.04em] transition-all";
+
+export default function PracticePage({ allQuestions, userEmail }: { allQuestions: Question[], userEmail: string }) {
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [activeTopic, setActiveTopic] = useState<TopicId | "all">("all");
   const [activeDiff, setActiveDiff] = useState<Difficulty | "all">("all");
@@ -43,281 +51,501 @@ export default function PracticePage({ allQuestions }: { allQuestions: Question[
   const [showSolution, setShowSolution] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Run only on client after hydration to avoid SSR mismatch
   useEffect(() => {
-    const session = getActiveSession();
-    setSessionTopics(session ? session.topics : AVAILABLE_TOPICS.map((t) => t.id));
-    setDoneIds(getDoneIds());
+    const session = getActiveSession(userEmail);
+    // Client-only hydration from localStorage/session state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSessionTopics(session ? session.topics : AVAILABLE_TOPICS.map((topic) => topic.id));
+    setDoneIds(getDoneIds(userEmail));
     setMounted(true);
-  }, []);
+  }, [userEmail]);
 
   const questions = useMemo(
-    () => allQuestions.filter((q) => sessionTopics.includes(q.topicId)),
+    () => allQuestions.filter((question) => sessionTopics.includes(question.topicId)),
     [allQuestions, sessionTopics]
   );
 
   const filtered = useMemo(() => {
     let result = questions;
-    if (activeTopic !== "all") result = result.filter((q) => q.topicId === activeTopic);
-    if (activeDiff !== "all") result = result.filter((q) => q.difficulty === activeDiff);
-    if (hideCompleted) result = result.filter((q) => !doneIds.has(q.id));
+    if (activeTopic !== "all") result = result.filter((question) => question.topicId === activeTopic);
+    if (activeDiff !== "all") result = result.filter((question) => question.difficulty === activeDiff);
+    if (hideCompleted) result = result.filter((question) => !doneIds.has(question.id));
     return result;
   }, [questions, activeTopic, activeDiff, hideCompleted, doneIds]);
 
-  const handleToggleDone = useCallback((id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setDoneIds(toggleDone(id));
-  }, []);
+  const topicsInSession = AVAILABLE_TOPICS.filter((topic) => sessionTopics.includes(topic.id));
+  const totalDone = questions.filter((question) => doneIds.has(question.id)).length;
+  const progress = questions.length ? Math.round((totalDone / questions.length) * 100) : 0;
 
-  const topicsInSession = AVAILABLE_TOPICS.filter((t) => sessionTopics.includes(t.id));
-  const totalDone = questions.filter((q) => doneIds.has(q.id)).length;
+  const handleToggleDone = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    // Check if we are marking it as done (it wasn't done before)
+    const isNowDone = !doneIds.has(id);
+    setDoneIds(toggleDone(id, userEmail));
+    
+    if (isNowDone) {
+      // Side-cannon continuous celebration
+      const duration = 1500;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 4,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.8 },
+          colors: ["#3DBF82", "#7ED9A6", "#E8A140", "#ffffff"],
+          ticks: 200
+        });
+        
+        confetti({
+          particleCount: 4,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.8 },
+          colors: ["#3DBF82", "#7ED9A6", "#E8A140", "#ffffff"],
+          ticks: 200
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      
+      frame();
+    }
+  };
+
+  const resetQuestionView = () => {
+    setSelected(null);
+    setShowSolution(false);
+  };
 
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="ir-login-page">
+        <div className="ir-login-bg" />
+        <div className="ir-login-grid" />
+        <div className="ir-login-grain" />
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#E8A140] border-t-transparent" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600">
-              <CodeIcon className="w-4 h-4 text-white" />
+    <div className="ir-login-page">
+      <div className="ir-login-bg" />
+      <div className="ir-login-grid" />
+      <div className="ir-login-grain" />
+
+      <div className="ir-login-shell">
+        <header className="ir-login-nav">
+          <Link href="/dashboard" className="ir-login-logo">
+            <div className="ir-login-logo-icon">
+              <CodeIcon className="h-[18px] w-[18px] text-[#0C0A00]" />
             </div>
-            <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Am I Interview Ready
-            </span>
+            <span className="ir-login-logo-text">InterviewReady</span>
           </Link>
+
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500 hidden sm:block">
+            <div className="ir-login-nav-badge">
+              <div className="ir-login-pulse" />
               {totalDone}/{questions.length} completed
-            </span>
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm">Dashboard</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex gap-6">
-        {/* Sidebar Filters */}
-        <aside className="hidden lg:block w-56 flex-shrink-0">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow p-4 sticky top-20">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Topics</p>
-            <button
-              onClick={() => setActiveTopic("all")}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm mb-1 transition-colors ${activeTopic === "all" ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 font-medium" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
-            >
-              All Topics
-            </button>
-            {topicsInSession.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTopic(t.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm mb-1 transition-colors ${activeTopic === t.id ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 font-medium" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
-              >
-                {t.name}
-              </button>
-            ))}
-
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 mt-5">Difficulty</p>
-            {(["all", "easy", "medium", "hard"] as const).map((d) => (
-              <button
-                key={d}
-                onClick={() => setActiveDiff(d)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm mb-1 capitalize transition-colors ${activeDiff === d ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 font-medium" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
-              >
-                {d === "all" ? "All" : d}
-              </button>
-            ))}
-
-            <label className="flex items-center gap-2 mt-5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={hideCompleted}
-                onChange={(e) => setHideCompleted(e.target.checked)}
-                className="accent-blue-600 w-4 h-4"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Hide completed</span>
-            </label>
-          </div>
-        </aside>
-
-        {/* Main: Question List + Detail */}
-        <main className="flex-1 min-w-0">
-          {/* Progress Bar */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow p-4 mb-4 flex items-center gap-4">
-            <div className="flex-1">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="font-medium text-gray-700 dark:text-gray-300">Session Progress</span>
-                <span className="text-gray-500">{totalDone}/{questions.length}</span>
-              </div>
-              <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300"
-                  style={{ width: `${questions.length ? (totalDone / questions.length) * 100 : 0}%` }}
-                />
-              </div>
             </div>
-            <span className="text-lg font-bold text-blue-600">
-              {questions.length ? Math.round((totalDone / questions.length) * 100) : 0}%
-            </span>
+            <LogoutButton />
           </div>
+        </header>
 
-          {/* Mobile Filters */}
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-4 lg:hidden">
-            {(["all", ...topicsInSession.map((t) => t.id)] as (TopicId | "all")[]).map((tid) => {
-              const label = tid === "all" ? "All" : AVAILABLE_TOPICS.find((t) => t.id === tid)?.name ?? tid;
-              return (
-                <button
-                  key={tid}
-                  onClick={() => setActiveTopic(tid)}
-                  className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap font-medium transition-colors ${activeTopic === tid ? "bg-blue-600 text-white" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border"}`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          {selected ? (
-            /* ── Question Detail View ── */
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow">
-              <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-4">
-                <button
-                  onClick={() => { setSelected(null); setShowSolution(false); }}
-                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Back to list
-                </button>
-                <button
-                  onClick={(e) => handleToggleDone(selected.id, e)}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${doneIds.has(selected.id) ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-green-100 hover:text-green-700"}`}
-                >
-                  {doneIds.has(selected.id) ? (
-                    <><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> Completed</>
-                  ) : (
-                    <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Mark Done</>
-                  )}
-                </button>
+        <main className="ir-login-center px-6">
+          <div className="w-full max-w-[980px]">
+            <section className="mb-7 text-center">
+              <div className="ir-login-copy-tag">
+                <div className="ir-login-copy-tag-square" />
+                Practice Workspace
               </div>
+              <h1 className="ir-login-copy-title">
+                Practice with <em>steady focus.</em>
+              </h1>
+              <p className="mx-auto mt-5 max-w-[620px] text-[15px] leading-8 text-[var(--off)]">
+                Review your active question set, filter by topic or difficulty, and keep every
+                solved problem inside the same workspace.
+              </p>
+            </section>
 
-              <div className="p-6">
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${difficultyColors[selected.difficulty]}`}>
-                    {selected.difficulty}
-                  </span>
-                  {selected.tags.map((tag) => (
-                    <span key={tag} className="px-2.5 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-5">{selected.title}</h2>
-
-                <div className="prose dark:prose-invert max-w-none mb-6">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{selected.description}</p>
-                </div>
-
-                {selected.hint && (
-                  <details className="mb-6 group">
-                    <summary className="cursor-pointer flex items-center gap-2 text-blue-600 font-medium select-none">
-                      <svg className="w-4 h-4 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                      Show Hint
-                    </summary>
-                    <div className="mt-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-sm">
-                      {selected.hint}
-                    </div>
-                  </details>
-                )}
-
-                <div>
-                  <button
-                    onClick={() => setShowSolution(!showSolution)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
-                    {showSolution ? "Hide Solution" : "View Solution"}
-                    <svg className={`w-4 h-4 transition-transform ${showSolution ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {showSolution && (
-                    <div className="mt-4 p-5 rounded-xl bg-gray-900 text-gray-100 text-sm font-mono whitespace-pre-wrap overflow-x-auto">
-                      {selected.solution}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* ── Question List ── */
-            <div className="space-y-2">
-              {filtered.length === 0 ? (
-                <Card>
-                  <CardContent className="py-16 text-center text-gray-500">
-                    No questions match your filters.
-                  </CardContent>
-                </Card>
-              ) : (
-                filtered.map((q, i) => {
-                  const done = doneIds.has(q.id);
-                  const topic = AVAILABLE_TOPICS.find((t) => t.id === q.topicId);
-                  return (
-                    <div
-                      key={q.id}
-                      onClick={() => { setSelected(q); setShowSolution(false); }}
-                      className={`bg-white dark:bg-gray-900 rounded-xl shadow-sm hover:shadow-md border transition-all cursor-pointer flex items-center gap-4 p-4 ${done ? "border-green-200 dark:border-green-800/50" : "border-transparent hover:border-blue-200 dark:hover:border-blue-800"}`}
-                    >
-                      {/* Number */}
-                      <span className="w-7 text-center text-sm font-mono text-gray-400">{i + 1}</span>
-
-                      {/* Done checkbox */}
+            <section className="ir-login-card">
+              <div className="ir-login-card-bar" />
+              <div className="ir-login-card-inner">
+                {selected ? (
+                  <div className="w-full rounded-[18px] border border-[var(--card-border)] bg-[rgba(24,20,17,0.92)]">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--card-border)] px-5 py-4">
                       <button
-                        onClick={(e) => handleToggleDone(q.id, e)}
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${done ? "border-green-500 bg-green-500" : "border-gray-300 dark:border-gray-600 hover:border-green-400"}`}
+                        type="button"
+                        onClick={resetQuestionView}
+                        className="flex items-center gap-2 text-sm text-[var(--muted)] transition-colors hover:text-[#F5F0E8]"
                       >
-                        {done && (
-                          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Back to list
                       </button>
 
-                      {/* Title + topic */}
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-medium truncate ${done ? "line-through text-gray-400" : "text-gray-900 dark:text-white"}`}>
-                          {q.title}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">{topic?.name}</p>
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.95 }}
+                        onClick={(event) => handleToggleDone(selected.id, event)}
+                        className={`relative z-10 flex min-w-[124px] items-center justify-center overflow-hidden rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                          doneIds.has(selected.id)
+                            ? "border-[#3DBF82] bg-[#3DBF82] text-[#0C0A00] shadow-[0_0_24px_rgba(61,191,130,0.3)]"
+                            : "border-[var(--card-border)] bg-[var(--bg3)] text-[var(--off)] hover:border-[#E8A140] hover:text-[#E8A140]"
+                        }`}
+                      >
+                        <AnimatePresence mode="wait">
+                          {doneIds.has(selected.id) ? (
+                            <motion.div
+                              key="done"
+                              initial={{ opacity: 0, scale: 0.5, y: -10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.5, y: 10 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                              className="flex items-center gap-1.5"
+                            >
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Completed
+                              
+                              {/* Expanding Shockwave Ripple */}
+                              <motion.div
+                                initial={{ scale: 1, opacity: 0.8 }}
+                                animate={{ scale: 1.6, opacity: 0 }}
+                                transition={{ duration: 0.6, ease: "easeOut" }}
+                                className="absolute inset-0 rounded-full border-2 border-[#3DBF82] pointer-events-none"
+                              />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              key="mark"
+                              initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.5, y: -10 }}
+                              transition={{ duration: 0.15 }}
+                            >
+                              Mark Done
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.button>
+                    </div>
+
+                    <div className="px-5 py-6">
+                      <div className="mb-4 flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] ${difficultyTone[selected.difficulty]}`}>
+                          {selected.difficulty}
+                        </span>
+                        {selected.tags.map((tag) => (
+                          <span key={tag} className="rounded-full border border-[var(--card-border)] bg-[var(--bg3)] px-2.5 py-1 text-xs text-[var(--off)]">
+                            {tag}
+                          </span>
+                        ))}
                       </div>
 
-                      {/* Difficulty badge */}
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize hidden sm:block ${difficultyColors[q.difficulty]}`}>
-                        {q.difficulty}
-                      </span>
+                      <h3 className="font-editorial text-[34px] leading-tight text-[#F5F0E8]">
+                        {selected.title}
+                      </h3>
 
-                      <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      <div className="mt-5 rounded-[16px] border border-[var(--card-border)] bg-[var(--bg3)] px-4 py-4 text-[15px] leading-8 text-[var(--off)] whitespace-pre-wrap">
+                        {selected.description}
+                      </div>
+
+                      {selected.hint ? (
+                        <details className="mt-4 overflow-hidden rounded-[16px] border border-[var(--card-border)] bg-[var(--bg3)]">
+                          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-[#E8A140]">
+                            Show Hint
+                          </summary>
+                          <div className="border-t border-[var(--card-border)] px-4 py-4 text-sm leading-7 text-[var(--off)]">
+                            {selected.hint}
+                          </div>
+                        </details>
+                      ) : null}
+
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          onClick={() => setShowSolution((current) => !current)}
+                          className="relative flex h-[48px] items-center justify-center overflow-hidden rounded-[13px] border border-[#E8A140] bg-[#E8A140] px-5 text-[14px] font-medium tracking-[0.01em] text-[#0C0A00] shadow-[0_0_24px_rgba(232,161,64,0.22),0_4px_12px_rgba(0,0,0,0.25)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_0_36px_rgba(232,161,64,0.3),0_8px_20px_rgba(0,0,0,0.35)]"
+                        >
+                          {showSolution ? "Hide Solution" : "View Solution"}
+                        </button>
+
+                        {showSolution ? (
+                          <div className="mt-4 overflow-x-auto rounded-[16px] border border-[rgba(232,161,64,0.18)] bg-[#15110e] px-4 py-4 font-mono text-sm leading-7 text-[#F5F0E8] whitespace-pre-wrap">
+                            {selected.solution}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          )}
+                  </div>
+                ) : (
+                <div className="flex flex-col md:flex-row gap-8">
+                  <div className="w-full shrink-0 md:w-[240px]">
+                    <div className="mb-6">
+                      <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
+                        Session Progress
+                      </div>
+                      <div className="mb-3 font-editorial text-[42px] leading-none text-[#F5F0E8]">
+                        {progress}%
+                      </div>
+                      <div className="h-[8px] overflow-hidden rounded-full bg-[var(--border)]">
+                        <div
+                          className="h-full rounded-full bg-[linear-gradient(90deg,#E8A140_0%,#C4832A_100%)] transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-[13px] border border-[var(--card-border)] bg-[rgba(24,20,17,0.92)] px-4 py-3">
+                        <div className="font-editorial text-[24px] leading-none text-[#F5F0E8]">
+                          {questions.length}
+                        </div>
+                        <div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]">
+                          Total
+                        </div>
+                      </div>
+                      <div className="rounded-[13px] border border-[var(--card-border)] bg-[rgba(24,20,17,0.92)] px-4 py-3">
+                        <div className="font-editorial text-[24px] leading-none text-[#3DBF82]">
+                          {totalDone}
+                        </div>
+                        <div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]">
+                          Done
+                        </div>
+                      </div>
+                      <div className="col-span-2 rounded-[13px] border border-[var(--card-border)] bg-[rgba(24,20,17,0.92)] px-4 py-3 text-center">
+                        <div className="font-editorial text-[24px] leading-none text-[#F5F0E8]">
+                          {Math.max(questions.length - totalDone, 0)}
+                        </div>
+                        <div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]">
+                          Remaining
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+
+                <div className="mb-5 grid gap-3 rounded-[18px] border border-[var(--card-border)] bg-[rgba(24,20,17,0.92)] p-4">
+                  <div>
+                    <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
+                      Topics
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTopic("all");
+                          setSelected(null);
+                        }}
+                        className={`${baseFilterClass} ${
+                          activeTopic === "all"
+                            ? "border-[#E8A140] bg-[rgba(232,161,64,0.12)] text-[#E8A140]"
+                            : "border-[var(--card-border)] bg-[var(--bg3)] text-[var(--off)] hover:border-[#5d4420] hover:bg-[#2A2520]"
+                        }`}
+                      >
+                        All Topics
+                      </button>
+                      {topicsInSession.map((topic) => (
+                        <button
+                          key={topic.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveTopic(topic.id);
+                            setSelected(null);
+                          }}
+                          className={`${baseFilterClass} ${
+                            activeTopic === topic.id
+                              ? "border-[#E8A140] bg-[rgba(232,161,64,0.12)] text-[#E8A140]"
+                              : "border-[var(--card-border)] bg-[var(--bg3)] text-[var(--off)] hover:border-[#5d4420] hover:bg-[#2A2520]"
+                          }`}
+                        >
+                          {topic.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--muted)]">
+                      Difficulty
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(["all", "easy", "medium", "hard"] as const).map((difficulty) => (
+                        <button
+                          key={difficulty}
+                          type="button"
+                          onClick={() => {
+                            setActiveDiff(difficulty);
+                            setSelected(null);
+                          }}
+                          className={`${baseFilterClass} capitalize ${
+                            activeDiff === difficulty
+                              ? "border-[#E8A140] bg-[rgba(232,161,64,0.12)] text-[#E8A140]"
+                              : "border-[var(--card-border)] bg-[var(--bg3)] text-[var(--off)] hover:border-[#5d4420] hover:bg-[#2A2520]"
+                          }`}
+                        >
+                          {difficulty}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <label className="inline-flex w-fit items-center gap-3 rounded-full border border-[var(--card-border)] bg-[var(--bg3)] px-4 py-2 text-sm text-[var(--off)]">
+                    <input
+                      type="checkbox"
+                      checked={hideCompleted}
+                      onChange={(event) => {
+                        setHideCompleted(event.target.checked);
+                        setSelected(null);
+                      }}
+                      className="h-4 w-4 accent-[#E8A140]"
+                    />
+                    Hide completed questions
+                  </label>
+                </div>
+
+                <div className="mb-5 grid gap-[10px] md:grid-cols-3">
+                  <Link
+                    href="/dashboard"
+                    className="flex h-[52px] w-full items-center justify-center rounded-[13px] border border-[#F5F0E8] bg-transparent px-[18px] text-[14px] font-medium tracking-[0.01em] text-[#F5F0E8] transition-all duration-150 hover:-translate-y-0.5 hover:bg-[rgba(245,240,232,0.06)]"
+                  >
+                    Back to Dashboard
+                  </Link>
+                  <Link
+                    href="/session"
+                    className="flex h-[52px] w-full items-center justify-center rounded-[13px] border border-[var(--card-border)] bg-[var(--bg3)] px-[18px] text-[14px] font-medium tracking-[0.01em] text-[#F5F0E8] shadow-[0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-[#2A2520]"
+                  >
+                    Manage Sessions
+                  </Link>
+                  <Link
+                    href="/session/new"
+                    className="relative flex h-[52px] w-full items-center justify-center overflow-hidden rounded-[13px] border border-[#E8A140] bg-[#E8A140] px-[18px] text-[14px] font-medium tracking-[0.01em] text-[#0C0A00] shadow-[0_0_24px_rgba(232,161,64,0.25),0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_0_36px_rgba(232,161,64,0.35),0_8px_20px_rgba(0,0,0,0.35)]"
+                  >
+                    Create New Session
+                  </Link>
+                </div>
+
+                {filtered.length === 0 ? (
+                  <div className="rounded-[18px] border border-[var(--card-border)] bg-[rgba(24,20,17,0.92)] px-5 py-16 text-center text-[15px] text-[var(--muted)]">
+                    No questions match your current filters.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filtered.map((question, index) => {
+                      const done = doneIds.has(question.id);
+                      const topic = AVAILABLE_TOPICS.find((entry) => entry.id === question.topicId);
+
+                      return (
+                        <div
+                          key={question.id}
+                          onClick={() => {
+                            setSelected(question);
+                            setShowSolution(false);
+                          }}
+                          className={`flex w-full items-center gap-4 rounded-[16px] border px-4 py-4 text-left transition-all ${
+                            done
+                              ? "border-[rgba(61,191,130,0.2)] bg-[rgba(61,191,130,0.08)]"
+                              : "border-[var(--card-border)] bg-[rgba(24,20,17,0.92)] hover:border-[#5d4420] hover:bg-[#2A2520]"
+                          }`}
+                        >
+                          <span className="w-7 flex-shrink-0 text-center font-mono text-sm text-[var(--muted)]">
+                            {index + 1}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(event) => handleToggleDone(question.id, event)}
+                            className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border transition-all ${
+                              done
+                                ? "border-[#3DBF82] bg-[#3DBF82] text-[#08140d]"
+                                : "border-[var(--muted)] bg-transparent text-transparent hover:border-[#3DBF82]"
+                            }`}
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          </button>
+
+                          <div className="min-w-0 flex-1">
+                            <div
+                              className={`truncate text-[15px] font-medium ${
+                                done ? "text-[rgba(245,240,232,0.58)] line-through" : "text-[#F5F0E8]"
+                              }`}
+                            >
+                              {question.title}
+                            </div>
+                            <div className="mt-1 text-xs uppercase tracking-[0.08em] text-[var(--muted)]">
+                              {topic?.name}
+                            </div>
+                          </div>
+
+                          <span
+                            className={`hidden rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] sm:block ${difficultyTone[question.difficulty]}`}
+                          >
+                            {question.difficulty}
+                          </span>
+
+                          <svg
+                            className="h-4 w-4 flex-shrink-0 text-[var(--muted)]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                  </div>
+                </div>
+                )}
+
+                <div className="ir-login-note">
+                  {topicsInSession.map((topic) => topic.name).join(" • ")}
+                </div>
+              </div>
+            </section>
+          </div>
         </main>
+
+        <footer className="ir-login-footer">
+          <span className="ir-login-footer-copy">© 2026 InterviewReady</span>
+          <div className="ir-login-footer-links">
+            <Link href="/" className="ir-login-footer-link">
+              Privacy
+            </Link>
+            <Link href="/" className="ir-login-footer-link">
+              Terms
+            </Link>
+            <Link href="/" className="ir-login-footer-link">
+              Support
+            </Link>
+          </div>
+        </footer>
       </div>
     </div>
   );

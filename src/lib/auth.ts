@@ -2,7 +2,7 @@ import type { NextAuthOptions, Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import { createClient } from "@supabase/supabase-js";
+import CredentialsProvider from "next-auth/providers/credentials";
 
 // Extend the built-in session/token types
 declare module "next-auth" {
@@ -31,6 +31,17 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
+    CredentialsProvider({
+      name: "Guest",
+      credentials: {},
+      async authorize() {
+        return {
+          id: `guest_${Date.now()}`,
+          name: "Guest User",
+          email: "guest@interviewready.com",
+        };
+      },
     }),
   ],
   pages: {
