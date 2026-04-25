@@ -22,8 +22,13 @@ export interface Session {
   id: string;
   name: string;
   topics: TopicId[];
-  createdAt: Date;
-  targetDate?: Date;
+  createdAt: string;
+  targetDate?: string;
+  isCompleted?: boolean;
+  feedback?: {
+    rating: number;
+    review: string;
+  };
   progress: {
     [key in TopicId]?: {
       solved: number;

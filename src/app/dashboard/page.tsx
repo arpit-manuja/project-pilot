@@ -13,53 +13,56 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const firstName = session.user.name?.split(" ")[0] || "there";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg">
-              <CodeIcon className="w-5 h-5 text-white" />
+    <div className="ir-login-page">
+      <div className="ir-login-bg" />
+      <div className="ir-login-grid" />
+      <div className="ir-login-grain" />
+
+      <div className="ir-login-shell">
+        <header className="ir-login-nav">
+          <Link href="/dashboard" className="ir-login-logo">
+            <div className="ir-login-logo-icon">
+              <CodeIcon className="h-[18px] w-[18px] text-[#0C0A00]" />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Am I Interview Ready
-            </span>
+            <span className="ir-login-logo-text">InterviewReady</span>
           </Link>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              {session.user.image && (
-                <img
-                  src={session.user.image}
-                  alt={session.user.name || "User"}
-                  className="w-9 h-9 rounded-full border-2 border-white shadow-md"
-                />
-              )}
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block">
-                {session.user.name}
-              </span>
+          <div className="flex items-center gap-3">
+            <div className="ir-login-nav-badge">
+              <div className="ir-login-pulse" />
+              100% Free Forever
             </div>
             <LogoutButton />
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Welcome Section */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome back, {session.user.name?.split(" ")[0]}! 👋
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Ready to continue your interview preparation journey?
-          </p>
-        </div>
+        <main className="ir-login-center">
+          <div className="w-full max-w-[860px] px-6">
+            <section className="ir-login-card">
+              <div className="ir-login-card-bar" />
+              <DashboardContent userName={firstName} userEmail={session.user.email || "guest"} />
+            </section>
+          </div>
+        </main>
 
-        {/* Session-based Dashboard Content */}
-        <DashboardContent userName={session.user.name?.split(" ")[0] || "there"} />
-      </main>
+        <footer className="ir-login-footer">
+          <span className="ir-login-footer-copy">© 2026 InterviewReady</span>
+          <div className="ir-login-footer-links">
+            <Link href="/" className="ir-login-footer-link">
+              Privacy
+            </Link>
+            <Link href="/" className="ir-login-footer-link">
+              Terms
+            </Link>
+            <Link href="/" className="ir-login-footer-link">
+              Support
+            </Link>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
